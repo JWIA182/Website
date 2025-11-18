@@ -293,15 +293,25 @@ function renderTasks() {
 }
 
 function toggleTask(id) {
+  const current = tasks.find((task) => task.id === id);
+  if (!current) return;
+  const nextDone = !current.done;
   tasks = tasks.map((task) =>
-    task.id === id ? { ...task, done: !task.done } : task
+    task.id === id ? { ...task, done: nextDone } : task
   );
-  if (tasks.find((t) => t.id === id)?.done) {
-    stats.tasksDone += 1;
-  }
+  adjustTaskDoneStat(current.done, nextDone);
   renderTasks();
   renderStats();
   persist();
+}
+
+function adjustTaskDoneStat(previous, next) {
+  if (previous === next) return;
+  if (next) {
+    stats.tasksDone += 1;
+  } else {
+    stats.tasksDone = Math.max(0, stats.tasksDone - 1);
+  }
 }
 
 function setActiveTask(id) {
@@ -571,7 +581,7 @@ function populateSettingsForm() {
 }
 
 function recordSession() {
-  const minutes = Math.round(settings[state.mode]);
+  const minutes = getElapsedMinutes();
   const completedAt = new Date();
   const startedAt = state.sessionStart
     ? new Date(state.sessionStart)
@@ -601,6 +611,15 @@ function recordSession() {
   renderSessions();
   renderStats();
   persist();
+}
+
+function getElapsedMinutes() {
+  if (!state.sessionStart) {
+    return Math.round(settings[state.mode]);
+  }
+  const elapsedMs = Math.max(0, Date.now() - state.sessionStart);
+  const elapsedMinutes = Math.round(elapsedMs / 60000);
+  return Math.max(1, elapsedMinutes);
 }
 
 function updateStreak() {
