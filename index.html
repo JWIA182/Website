@@ -49,31 +49,84 @@
       </section>
 
       <section class="panels">
-        <article class="panel">
-          <header>
-            <h2>Tasks</h2>
-            <button id="clear-finished" class="text-btn">Clear done</button>
-          </header>
-          <form id="task-form" class="task-form">
-            <input
-              type="text"
-              name="task"
-              id="task-input"
-              placeholder="Add a focus task"
-              required
-              maxlength="60"
-            />
-            <input
-              type="number"
-              name="estimate"
-              id="estimate-input"
-              placeholder="Pomodoros"
-              min="1"
-              max="12"
-            />
-            <button type="submit">Add</button>
-          </form>
-          <ul id="task-list" class="task-list" aria-live="polite"></ul>
+        <article class="panel tasks-panel">
+          <div class="task-layout">
+            <aside class="catalogue-sidebar">
+              <div class="catalogue-sidebar__header">
+                <h3>Catalogues</h3>
+                <p class="catalogue-sidebar__hint">
+                  Filter tasks by project
+                </p>
+              </div>
+              <div
+                id="catalogue-filter"
+                class="catalogue-filter"
+                aria-live="polite"
+              ></div>
+            </aside>
+            <div class="task-main">
+              <header>
+                <h2>Tasks</h2>
+                <button id="clear-finished" class="text-btn">Clear done</button>
+              </header>
+              <form id="task-form" class="task-form">
+                <input
+                  type="text"
+                  name="task"
+                  id="task-input"
+                  placeholder="Add a focus task"
+                  required
+                  maxlength="60"
+                />
+                <div class="catalogue-fields">
+                  <label>
+                    Assign to catalogue
+                    <select id="catalogue-select" name="catalogue"></select>
+                  </label>
+                  <label>
+                    or create new
+                    <input
+                      type="text"
+                      id="new-catalogue-input"
+                      name="newCatalogue"
+                      placeholder="New catalogue"
+                      maxlength="40"
+                    />
+                  </label>
+                </div>
+                <input
+                  type="number"
+                  name="estimate"
+                  id="estimate-input"
+                  placeholder="Pomodoros"
+                  min="1"
+                  max="12"
+                />
+                <div class="file-fields">
+                  <label>
+                    Upload files
+                    <input
+                      type="file"
+                      id="task-files"
+                      name="files"
+                      multiple
+                    />
+                  </label>
+                  <label>
+                    Project links
+                    <textarea
+                      id="task-links"
+                      name="links"
+                      placeholder="Paste URLs, one per line"
+                      rows="2"
+                    ></textarea>
+                  </label>
+                </div>
+                <button type="submit">Add task</button>
+              </form>
+              <ul id="task-list" class="task-list" aria-live="polite"></ul>
+            </div>
+          </div>
         </article>
 
         <article class="panel">
@@ -155,6 +208,10 @@
           <button class="text-btn delete-task" aria-label="Delete task">
             ✕
           </button>
+        </div>
+        <div class="task-details">
+          <span class="task-catalogue-pill"></span>
+          <ul class="task-files"></ul>
         </div>
       </li>
     </template>
