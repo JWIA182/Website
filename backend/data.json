@@ -1,0 +1,22 @@
+{
+  "settings": {
+    "focus": 25,
+    "short": 5,
+    "long": 15,
+    "cycles": 4,
+    "autoStart": false,
+    "chime": true
+  },
+  "tasks": [],
+  "stats": {
+    "totalMinutes": 0,
+    "sessions": 0,
+    "tasksDone": 0,
+    "streak": 0,
+    "longestStreak": 0,
+    "lastSessionDate": null
+  },
+  "state": {
+    "activeTaskId": null
+  }
+}

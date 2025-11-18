@@ -2,12 +2,12 @@ const $ = (selector, scope = document) => scope.querySelector(selector);
 const $$ = (selector, scope = document) =>
   Array.from(scope.querySelectorAll(selector));
 
-const STORAGE_KEYS = {
-  settings: "focusflow:settings",
-  tasks: "focusflow:tasks",
-  stats: "focusflow:stats",
-  state: "focusflow:state",
-};
+const API_BASE =
+  window.FOCUSFLOW_API_BASE ||
+  (window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1"
+    ? "http://localhost:4000/api"
+    : "/api");
 
 const defaultSettings = {
   focus: 25,
@@ -18,25 +18,29 @@ const defaultSettings = {
   chime: true,
 };
 
-const chime = $("#chime-sound");
-
-let settings = load(STORAGE_KEYS.settings, defaultSettings);
-let tasks = load(STORAGE_KEYS.tasks, []);
-let stats = load(STORAGE_KEYS.stats, {
+const defaultStats = {
   totalMinutes: 0,
   sessions: 0,
   tasksDone: 0,
   streak: 0,
   longestStreak: 0,
   lastSessionDate: null,
-});
+};
+
+const chime = $("#chime-sound");
+
+let settings = { ...defaultSettings };
+let tasks = [];
+let stats = { ...defaultStats };
+
+let syncErrorMessage = "";
 
 const state = {
   mode: "focus",
   remaining: settings.focus * 60,
   timerId: null,
   cycleCount: 0,
-  activeTaskId: load(STORAGE_KEYS.state, { activeTaskId: null }).activeTaskId,
+  activeTaskId: null,
 };
 
 const countdownEl = $("#countdown");
@@ -60,7 +64,17 @@ const statsEls = {
   longest: $("#longest-streak"),
 };
 
-setup();
+init();
+
+async function init() {
+  await Promise.all([
+    loadSettings(),
+    loadTasks(),
+    loadStats(),
+    loadTimerState(),
+  ]);
+  setup();
+}
 
 function setup() {
   modeButtons.forEach((btn) =>
@@ -78,25 +92,6 @@ function setup() {
   renderStats();
   updateActiveTaskLabel();
   renderTimer();
-}
-
-function load(key, fallback) {
-  try {
-    const value = localStorage.getItem(key);
-    return value ? { ...fallback, ...JSON.parse(value) } : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function persist() {
-  localStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
-  localStorage.setItem(STORAGE_KEYS.tasks, JSON.stringify(tasks));
-  localStorage.setItem(STORAGE_KEYS.stats, JSON.stringify(stats));
-  localStorage.setItem(
-    STORAGE_KEYS.state,
-    JSON.stringify({ activeTaskId: state.activeTaskId })
-  );
 }
 
 function switchMode(mode) {
@@ -133,7 +128,17 @@ function formatTime(seconds) {
 
 function renderTimer() {
   countdownEl.textContent = formatTime(state.remaining);
+  renderStatus();
+}
+
+function renderStatus() {
+  if (syncErrorMessage) {
+    statusEl.textContent = syncErrorMessage;
+    statusEl.classList.add("error");
+    return;
+  }
   statusEl.textContent = state.timerId ? "In progress" : "Ready when you are.";
+  statusEl.classList.remove("error");
 }
 
 function toggleTimer() {
@@ -204,7 +209,7 @@ function nextMode() {
   return "focus";
 }
 
-function handleTaskSubmit(event) {
+async function handleTaskSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const title = form.task.value.trim();
@@ -219,7 +224,7 @@ function handleTaskSubmit(event) {
   });
   form.reset();
   renderTasks();
-  persist();
+  await persistTasks();
 }
 
 function renderTasks() {
@@ -246,7 +251,7 @@ function renderTasks() {
   });
 }
 
-function toggleTask(id) {
+async function toggleTask(id) {
   tasks = tasks.map((task) =>
     task.id === id ? { ...task, done: !task.done } : task
   );
@@ -255,37 +260,48 @@ function toggleTask(id) {
   }
   renderTasks();
   renderStats();
-  persist();
+  const saved = await persistTasks({ reloadStats: true });
+  if (!saved) return;
+  await persistStats();
 }
 
-function setActiveTask(id) {
+async function setActiveTask(id) {
   state.activeTaskId = id;
   updateActiveTaskLabel();
   renderTasks();
-  persist();
+  await persistTimerState();
 }
 
-function deleteTask(id) {
+async function deleteTask(id) {
+  const wasActive = state.activeTaskId === id;
   tasks = tasks.filter((task) => task.id !== id);
-  if (state.activeTaskId === id) {
+  if (wasActive) {
     state.activeTaskId = null;
     updateActiveTaskLabel();
   }
   renderTasks();
-  persist();
+  const saved = await persistTasks({ reloadState: wasActive });
+  if (!saved) return;
+  if (wasActive) {
+    await persistTimerState();
+  }
 }
 
-function clearCompletedTasks() {
+async function clearCompletedTasks() {
   tasks = tasks.filter((task) => !task.done);
-  if (!tasks.find((task) => task.id === state.activeTaskId)) {
+  const activeExists = tasks.find((task) => task.id === state.activeTaskId);
+  const lostActive = Boolean(state.activeTaskId) && !activeExists;
+  if (lostActive) {
     state.activeTaskId = null;
     updateActiveTaskLabel();
   }
   renderTasks();
-  persist();
+  const saved = await persistTasks({ reloadState: lostActive });
+  if (!saved || !lostActive) return;
+  await persistTimerState();
 }
 
-function creditActiveTask() {
+async function creditActiveTask() {
   if (!state.activeTaskId) return;
   tasks = tasks.map((task) => {
     if (task.id !== state.activeTaskId) return task;
@@ -298,7 +314,9 @@ function creditActiveTask() {
   });
   renderTasks();
   renderStats();
-  persist();
+  const saved = await persistTasks({ reloadStats: true });
+  if (!saved) return;
+  await persistStats();
 }
 
 function updateActiveTaskLabel() {
@@ -308,7 +326,7 @@ function updateActiveTaskLabel() {
     : "No task selected";
 }
 
-function handleSettingsSubmit(event) {
+async function handleSettingsSubmit(event) {
   event.preventDefault();
   const formData = new FormData(event.currentTarget);
   settings = {
@@ -322,7 +340,7 @@ function handleSettingsSubmit(event) {
   state.remaining = settings[state.mode] * 60;
   stopTimer();
   renderTimer();
-  persist();
+  await persistSettings();
 }
 
 function populateSettingsForm() {
@@ -334,7 +352,7 @@ function populateSettingsForm() {
   settingsForm.chime.checked = settings.chime;
 }
 
-function recordSession() {
+async function recordSession() {
   const minutes = Math.round(settings[state.mode]);
   stats.sessions += 1;
   if (state.mode === "focus") {
@@ -342,7 +360,7 @@ function recordSession() {
     updateStreak();
   }
   renderStats();
-  persist();
+  await persistStats();
 }
 
 function updateStreak() {
@@ -374,15 +392,146 @@ function renderStats() {
   streakCountEl.textContent = stats.streak;
 }
 
-function resetStats() {
-  stats = {
-    totalMinutes: 0,
-    sessions: 0,
-    tasksDone: 0,
-    streak: 0,
-    longestStreak: 0,
-    lastSessionDate: null,
-  };
+async function resetStats() {
+  stats = { ...defaultStats };
   renderStats();
-  persist();
+  await persistStats();
+}
+
+async function loadSettings() {
+  const data = await getResource("settings", defaultSettings);
+  settings = { ...defaultSettings, ...data };
+  state.remaining = settings[state.mode] * 60;
+}
+
+async function loadTasks() {
+  const data = await getResource("tasks", []);
+  tasks = Array.isArray(data) ? data : [];
+}
+
+async function loadStats() {
+  const data = await getResource("stats", defaultStats);
+  stats = { ...defaultStats, ...data };
+}
+
+async function loadTimerState() {
+  const data = await getResource("state", { activeTaskId: null });
+  state.activeTaskId = data?.activeTaskId ?? null;
+}
+
+async function persistSettings() {
+  return persistResource("settings", settings);
+}
+
+async function persistTasks({ reloadStats = false, reloadState = false } = {}) {
+  return persistResource("tasks", tasks, {
+    onError: async () => {
+      await reloadResource("tasks");
+      const reloads = [];
+      if (reloadStats) reloads.push(reloadResource("stats"));
+      if (reloadState) reloads.push(reloadResource("state"));
+      await Promise.all(reloads);
+    },
+  });
+}
+
+async function persistStats() {
+  return persistResource("stats", stats);
+}
+
+async function persistTimerState() {
+  return persistResource("state", { activeTaskId: state.activeTaskId });
+}
+
+async function persistResource(resource, payload, { onError } = {}) {
+  try {
+    await requestJSON(`${API_BASE}/${resource}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    clearSyncError();
+    return true;
+  } catch (error) {
+    console.error(`Failed to persist ${resource}`, error);
+    setSyncError("Unable to save changes. Reverting to the last saved data.");
+    if (onError) {
+      await onError(error);
+    } else {
+      await reloadResource(resource);
+    }
+    return false;
+  }
+}
+
+async function reloadResource(resource) {
+  try {
+    const data = await requestJSON(`${API_BASE}/${resource}`);
+    switch (resource) {
+      case "settings":
+        settings = { ...defaultSettings, ...data };
+        state.remaining = settings[state.mode] * 60;
+        stopTimer();
+        renderTimer();
+        populateSettingsForm();
+        break;
+      case "tasks":
+        tasks = Array.isArray(data) ? data : [];
+        renderTasks();
+        if (!tasks.find((task) => task.id === state.activeTaskId)) {
+          state.activeTaskId = null;
+          updateActiveTaskLabel();
+        }
+        break;
+      case "stats":
+        stats = { ...defaultStats, ...data };
+        renderStats();
+        break;
+      case "state":
+        state.activeTaskId = data?.activeTaskId ?? null;
+        updateActiveTaskLabel();
+        renderTasks();
+        break;
+      default:
+        break;
+    }
+    clearSyncError();
+  } catch (error) {
+    console.error(`Failed to reload ${resource}`, error);
+    setSyncError("Still offline. We'll retry when you're back online.");
+  }
+}
+
+async function getResource(resource, fallback) {
+  try {
+    const data = await requestJSON(`${API_BASE}/${resource}`);
+    clearSyncError();
+    return data;
+  } catch (error) {
+    console.error(`Failed to load ${resource}`, error);
+    setSyncError("Offline mode: showing defaults until sync resumes.");
+    return fallback;
+  }
+}
+
+async function requestJSON(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+  if (response.status === 204) return null;
+  return response.json();
+}
+
+function setSyncError(message) {
+  syncErrorMessage = message;
+  renderStatus();
+}
+
+function clearSyncError() {
+  if (!syncErrorMessage) return;
+  syncErrorMessage = "";
+  renderStatus();
 }
