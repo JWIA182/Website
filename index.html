@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FocusFlow - Pomodoro with Superpowers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="logo">FocusFlow</div>
+      <div class="stats-highlight">
+        <span id="streak-count">0</span>
+        day streak
+      </div>
+    </header>
+
+    <main class="app-shell">
+      <section class="timer-card">
+        <nav class="mode-switch">
+          <button class="mode-btn active" data-mode="focus">Focus</button>
+          <button class="mode-btn" data-mode="short">Short Break</button>
+          <button class="mode-btn" data-mode="long">Long Break</button>
+        </nav>
+
+        <div class="timer-display" aria-live="polite">
+          <p class="countdown" id="countdown">25:00</p>
+          <p class="subtext" id="timer-status">Ready when you are.</p>
+        </div>
+
+        <div class="timer-actions">
+          <button id="primary-action" class="primary">Start Focus</button>
+          <button id="skip-action" class="ghost" aria-label="Skip interval">
+            Skip
+          </button>
+        </div>
+
+        <div class="active-task" id="active-task">No task selected</div>
+      </section>
+
+      <section class="panels">
+        <article class="panel">
+          <header>
+            <h2>Tasks</h2>
+            <button id="clear-finished" class="text-btn">Clear done</button>
+          </header>
+          <form id="task-form" class="task-form">
+            <input
+              type="text"
+              name="task"
+              id="task-input"
+              placeholder="Add a focus task"
+              required
+              maxlength="60"
+            />
+            <input
+              type="number"
+              name="estimate"
+              id="estimate-input"
+              placeholder="Pomodoros"
+              min="1"
+              max="12"
+            />
+            <button type="submit">Add</button>
+          </form>
+          <ul id="task-list" class="task-list" aria-live="polite"></ul>
+        </article>
+
+        <article class="panel">
+          <header>
+            <h2>Insights</h2>
+            <button id="reset-stats" class="text-btn">Reset</button>
+          </header>
+          <div class="stats-grid">
+            <div class="stat">
+              <p>Total focus</p>
+              <h3><span id="total-minutes">0</span> min</h3>
+            </div>
+            <div class="stat">
+              <p>Sessions</p>
+              <h3 id="session-count">0</h3>
+            </div>
+            <div class="stat">
+              <p>Tasks done</p>
+              <h3 id="tasks-done">0</h3>
+            </div>
+            <div class="stat">
+              <p>Longest streak</p>
+              <h3 id="longest-streak">0</h3>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel">
+          <header>
+            <h2>Settings</h2>
+          </header>
+          <form id="settings-form" class="settings-form">
+            <label>
+              Focus length (min)
+              <input type="number" name="focus" min="10" max="90" required />
+            </label>
+            <label>
+              Short break (min)
+              <input type="number" name="short" min="3" max="30" required />
+            </label>
+            <label>
+              Long break (min)
+              <input type="number" name="long" min="5" max="45" required />
+            </label>
+            <label>
+              Long break after
+              <input
+                type="number"
+                name="cycles"
+                min="2"
+                max="8"
+                required
+              />
+              focus sessions
+            </label>
+            <label class="toggle">
+              <input type="checkbox" name="autoStart" />
+              <span>Auto start next interval</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" name="chime" />
+              <span>Play completion chime</span>
+            </label>
+            <button type="submit">Save settings</button>
+          </form>
+        </article>
+      </section>
+    </main>
+
+    <template id="task-item-template">
+      <li class="task-item">
+        <label>
+          <input type="checkbox" class="task-check" />
+          <span class="task-title"></span>
+        </label>
+        <div class="task-meta">
+          <button class="text-btn select-task">Focus</button>
+          <span class="task-progress"></span>
+          <button class="text-btn delete-task" aria-label="Delete task">
+            ✕
+          </button>
+        </div>
+      </li>
+    </template>
+
+    <audio id="chime-sound" preload="auto">
+      <source
+        src="https://cdn.pixabay.com/audio/2022/10/19/audio_d9b89353d4.mp3"
+        type="audio/mpeg"
+      />
+    </audio>
+
+    <script src="app.js" type="module"></script>
+  </body>
+</html>

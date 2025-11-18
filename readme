@@ -1,1 +1,24 @@
+# FocusFlow
 
+FocusFlow is a modern, distraction-free productivity dashboard inspired by Pomofocus. It includes an adaptive Pomodoro timer, task manager, insights, and configurable settings—all running completely in the browser with local storage.
+
+## Features
+- **Timer modes** for focus, short break, and long break with automatic cycle tracking.
+- **Task list** with Pomodoro estimates, completion tracking, and quick selection for the active session.
+- **Insights** showing total focus minutes, session count, completed tasks, and streaks.
+- **Settings** for custom durations, long-break cadence, auto-start, and completion chimes.
+- **Offline-first**: all data persists via `localStorage`, so no account or backend is required.
+
+## Getting started
+1. Serve the project locally (any static server works). For example:
+   ```bash
+   python -m http.server 3000
+   ```
+2. Visit `http://localhost:3000` in your browser.
+3. Start a focus session, add tasks, and customize the timer lengths to suit your flow.
+
+## Technologies
+- Vanilla HTML, CSS, and JavaScript modules.
+- Accessible, responsive layout designed for both desktop and mobile.
+
+Feel free to fork and extend the experience with analytics, calendar integrations, or collaboration tools.
