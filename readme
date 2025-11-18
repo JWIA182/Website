@@ -1,24 +1,51 @@
 # FocusFlow
 
-FocusFlow is a modern, distraction-free productivity dashboard inspired by Pomofocus. It includes an adaptive Pomodoro timer, task manager, insights, and configurable settings—all running completely in the browser with local storage.
+FocusFlow is a modern, distraction-free productivity dashboard inspired by Pomofocus. It now pairs the adaptive Pomodoro timer, task manager, and insights UI with a lightweight Node/Express backend so that focus stats, settings, and tasks stay in sync across sessions.
 
 ## Features
 - **Timer modes** for focus, short break, and long break with automatic cycle tracking.
 - **Task list** with Pomodoro estimates, completion tracking, and quick selection for the active session.
 - **Insights** showing total focus minutes, session count, completed tasks, and streaks.
 - **Settings** for custom durations, long-break cadence, auto-start, and completion chimes.
-- **Offline-first**: all data persists via `localStorage`, so no account or backend is required.
+- **API-backed sync** so your tasks, timer preferences, and focus streaks survive refreshes and can be shared between browsers hitting the same service.
 
 ## Getting started
-1. Serve the project locally (any static server works). For example:
+1. Start the backend API:
+   ```bash
+   cd backend
+   npm install
+   npm start
+   ```
+   The server listens on `http://localhost:4000` by default and stores data in `backend/data.json`.
+2. In a second terminal, serve the frontend (any static server works). For example:
    ```bash
    python -m http.server 3000
    ```
-2. Visit `http://localhost:3000` in your browser.
-3. Start a focus session, add tasks, and customize the timer lengths to suit your flow.
+3. Visit `http://localhost:3000` in your browser. When running on `localhost`, the UI automatically talks to `http://localhost:4000/api`.
+4. Begin a focus session, add tasks, and customize the timer lengths to suit your flow.
+
+### Configuring the API base
+If you deploy the backend on a different origin, define `window.FOCUSFLOW_API_BASE` before `app.js` loads:
+
+```html
+<script>
+  window.FOCUSFLOW_API_BASE = "https://focusflow.example.com/api";
+</script>
+<script src="app.js" defer></script>
+```
+
+This ensures all fetch calls point to the correct REST endpoint.
+
+## Deployment
+
+Production deployments run the static frontend (via any CDN or web server) and the Node/Express API side-by-side. Ensure requests from the frontend can reach the backend's `/api` routes either by:
+
+- Hosting both behind the same domain and proxying `/api` to the Node server, or
+- Setting `window.FOCUSFLOW_API_BASE` (as above) so the frontend calls the fully qualified backend URL.
 
 ## Technologies
-- Vanilla HTML, CSS, and JavaScript modules.
+- Vanilla HTML, CSS, and JavaScript modules for the UI.
+- Node.js + Express + JSON file storage for the REST API.
 - Accessible, responsive layout designed for both desktop and mobile.
 
 Feel free to fork and extend the experience with analytics, calendar integrations, or collaboration tools.
